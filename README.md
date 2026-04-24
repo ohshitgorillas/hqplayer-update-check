@@ -8,6 +8,8 @@ Systemd timer that polls [Signalyst](https://signalyst.com) for new releases of 
 
 **NAA** — polls the Signalyst NAA RSS feed. Baselines to current latest on first run. Fires once per new release, then auto-advances the baseline.
 
+**HQPlayer Desktop** — polls the Signalyst Desktop RSS feed. Same baseline/auto-advance behavior as NAA.
+
 ## Requirements
 
 - Ubuntu 24.04 (Noble) — targets the `noble` package directory
@@ -90,12 +92,15 @@ Add to your node-exporter `command:` block (assumes `/` mounted as `/rootfs:ro`,
 | `hqplayer_update_check_success` | 0 = scrape or download failed |
 | `naa_update_available` | 1 = new NAA release detected (clears next run) |
 | `naa_update_check_success` | 0 = RSS fetch failed |
+| `desktop_update_available` | 1 = new HQPlayer Desktop release detected (clears next run) |
+| `desktop_update_check_success` | 0 = RSS fetch failed |
 
 ## State files
 
 | Path | Purpose |
 |------|---------|
 | `/etc/hqplayer-update-check/naa_known_version` | Last seen NAA version (auto-updated on each new release) |
+| `/etc/hqplayer-update-check/desktop_known_version` | Last seen HQPlayer Desktop version (auto-updated on each new release) |
 | `/var/lib/node_exporter/textfile_collector/hqplayer_update.prom` | Prometheus metrics output |
 
 ## Timer
