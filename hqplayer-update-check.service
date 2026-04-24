@@ -1,0 +1,6 @@
+[Unit]
+Description=HQPlayer Embedded + NAA update check
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hqplayer-update-check

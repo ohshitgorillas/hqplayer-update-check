@@ -1,0 +1,10 @@
+[Unit]
+Description=HQPlayer Embedded update check (every 6h)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
