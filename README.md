@@ -82,6 +82,23 @@ Add to your node-exporter `command:` block (assumes `/` mounted as `/rootfs:ro`,
     annotations:
       summary: "NAA update check failing on {{ $labels.instance }}"
       description: "Check: systemctl status hqplayer-update-check.timer && journalctl -u hqplayer-update-check"
+
+  - alert: HQPlayerDesktopUpdateAvailable
+    expr: desktop_update_available == 1
+    labels:
+      severity: info
+    annotations:
+      summary: "HQPlayer Desktop update available: v{{ $labels.latest }}"
+      description: "New Desktop v{{ $labels.latest }} on signalyst.com. Update macOS ARM, macOS x64, and Windows x64 clients."
+
+  - alert: HQPlayerDesktopUpdateCheckFailed
+    expr: desktop_update_check_success == 0
+    for: 24h
+    labels:
+      severity: warning
+    annotations:
+      summary: "HQPlayer Desktop update check failing on {{ $labels.instance }}"
+      description: "Check: systemctl status hqplayer-update-check.timer && journalctl -u hqplayer-update-check"
 ```
 
 ## Metrics
