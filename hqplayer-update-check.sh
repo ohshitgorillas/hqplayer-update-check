@@ -8,7 +8,7 @@ STATE_DIR="/etc/hqplayer-update-check"
 NAA_STATE_FILE="$STATE_DIR/naa_known_version"
 DESKTOP_STATE_FILE="$STATE_DIR/desktop_known_version"
 PROM_FILE="$TEXTFILE_DIR/hqplayer_update.prom"
-BINS_URL="https://www.signalyst.eu/bins/hqplayerd/noble/"
+BINS_URL="https://www.signalyst.eu/bins/hqplayerd/fc43/"
 RSS_NAA="https://signalyst.com/category/naa/feed/"
 RSS_DESKTOP="https://signalyst.com/category/desktop/feed/"
 
@@ -16,10 +16,11 @@ mkdir -p "$STATE_DIR" "$DOWNLOAD_DIR"
 
 # ── HQPlayer Embedded ────────────────────────────────────────────────────────
 
-INSTALLED_HQP=$(dpkg-query -W -f='${Version}' hqplayerd 2>/dev/null || true)
+# RPM Version-Release minus dist tag, e.g. "5.17.2-48"
+INSTALLED_HQP=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}' hqplayerd 2>/dev/null | sed -E 's/\.fc[0-9]+$//' || true)
 
-# Find latest intel deb from directory listing
-LATEST_DEB=$(curl -sf --max-time 15 "$BINS_URL" | python3 -c "
+# Find latest x86_64 rpm from directory listing
+LATEST_RPM=$(curl -sf --max-time 15 "$BINS_URL" | python3 -c "
 import sys, re
 from html.parser import HTMLParser
 
@@ -28,33 +29,36 @@ class P(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag == 'a':
             for k, v in attrs:
-                if k == 'href' and v and v.endswith('intel_amd64.deb'):
+                if k == 'href' and v and v.endswith('.x86_64.rpm'):
                     self.links.append(v)
 
 p = P(); p.feed(sys.stdin.read())
 
 def key(f):
-    m = re.search(r'(\d+)\.(\d+)\.(\d+)-(\d+)intel', f)
-    return tuple(int(x) for x in m.groups()) if m else (0,0,0,0)
+    m = re.search(r'(\d+)\.(\d+)\.(\d+)-(\d+)(?:\.(\d+))?\.fc', f)
+    if not m:
+        return (0,0,0,0,0)
+    g = m.groups()
+    return tuple(int(x) if x else 0 for x in g)
 
 if p.links:
     print(sorted(p.links, key=key)[-1])
 " 2>/dev/null || true)
 
-LATEST_HQP_VER=$(echo "$LATEST_DEB" | grep -oP '\d+\.\d+\.\d+-\d+intel' || true)
+LATEST_HQP_VER=$(echo "$LATEST_RPM" | grep -oP '\d+\.\d+\.\d+-\d+(?:\.\d+)?(?=\.fc)' || true)
 
 HQP_UPDATE=0
 HQP_SUCCESS=1
 
-if [[ -z "$LATEST_DEB" || -z "$LATEST_HQP_VER" ]]; then
+if [[ -z "$LATEST_RPM" || -z "$LATEST_HQP_VER" ]]; then
     HQP_SUCCESS=0
 elif [[ "$INSTALLED_HQP" != "$LATEST_HQP_VER" ]]; then
     HQP_UPDATE=1
-    DEB_PATH="$DOWNLOAD_DIR/$LATEST_DEB"
-    if [[ ! -f "$DEB_PATH" ]]; then
-        logger -t hqplayer-update "Downloading $LATEST_DEB..."
-        curl -sf --max-time 300 -o "$DEB_PATH" "${BINS_URL}${LATEST_DEB}" \
-            && logger -t hqplayer-update "Downloaded to $DEB_PATH" \
+    RPM_PATH="$DOWNLOAD_DIR/$LATEST_RPM"
+    if [[ ! -f "$RPM_PATH" ]]; then
+        logger -t hqplayer-update "Downloading $LATEST_RPM..."
+        curl -sf --max-time 300 -o "$RPM_PATH" "${BINS_URL}${LATEST_RPM}" \
+            && logger -t hqplayer-update "Downloaded to $RPM_PATH" \
             || { logger -t hqplayer-update "Download failed"; HQP_SUCCESS=0; }
     fi
 fi
