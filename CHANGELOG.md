@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-05-29
+
+### Changed
+- `BINS_URL` now derives the Fedora release from `rpm -E %fedora` instead of a hardcoded `fc43`. The bins dir tracks the running release automatically across distro upgrades; no edit needed on each bump.
+
+### Added
+- Distribution-bump detection: lists the bins root, takes the highest `fcNN` dir, and emits `hqplayer_distro_bump_available{running,latest}` (1 when signalyst publishes for a newer Fedora than the running release) plus `hqplayer_distro_check_success`.
+- `file` label on `hqplayer_update_available` carrying the exact RPM filename, so the install-command alert no longer hardcodes the dist tag.
+
 ## 2026-05-09
 
 ### Fixed

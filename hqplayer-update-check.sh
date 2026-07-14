@@ -8,7 +8,9 @@ STATE_DIR="/etc/hqplayer-update-check"
 NAA_STATE_FILE="$STATE_DIR/naa_known_version"
 DESKTOP_STATE_FILE="$STATE_DIR/desktop_known_version"
 PROM_FILE="$TEXTFILE_DIR/hqplayer_update.prom"
-BINS_URL="https://www.signalyst.eu/bins/hqplayerd/fc43/"
+RUNNING_FC=$(rpm -E %fedora)
+BINS_ROOT="https://www.signalyst.eu/bins/hqplayerd/"
+BINS_URL="${BINS_ROOT}fc${RUNNING_FC}/"
 RSS_NAA="https://signalyst.com/category/naa/feed/"
 RSS_DESKTOP="https://signalyst.com/category/desktop/feed/"
 
@@ -61,6 +63,20 @@ elif [[ "$INSTALLED_HQP" != "$LATEST_HQP_VER" ]]; then
             && logger -t hqplayer-update "Downloaded to $RPM_PATH" \
             || { logger -t hqplayer-update "Download failed"; HQP_SUCCESS=0; }
     fi
+fi
+
+# ── Distribution bump ─────────────────────────────────────────────────────────
+# Detect when signalyst publishes bins for a newer Fedora than the running one.
+
+LATEST_FC=$(curl -sf --max-time 15 "$BINS_ROOT" | grep -oP 'href="fc\K[0-9]+' | sort -n | tail -1 || true)
+
+DISTRO_BUMP=0
+DISTRO_SUCCESS=1
+if [[ -z "$LATEST_FC" ]]; then
+    DISTRO_SUCCESS=0
+    LATEST_FC="unknown"
+elif (( LATEST_FC > RUNNING_FC )); then
+    DISTRO_BUMP=1
 fi
 
 # ── NAA ──────────────────────────────────────────────────────────────────────
@@ -132,10 +148,16 @@ fi
 {
     echo '# HELP hqplayer_update_available 1 if new HQPlayer Embedded version downloaded and ready to install'
     echo '# TYPE hqplayer_update_available gauge'
-    echo "hqplayer_update_available{installed=\"${INSTALLED_HQP:-unknown}\",latest=\"${LATEST_HQP_VER:-unknown}\"} $HQP_UPDATE"
+    echo "hqplayer_update_available{installed=\"${INSTALLED_HQP:-unknown}\",latest=\"${LATEST_HQP_VER:-unknown}\",file=\"${LATEST_RPM:-unknown}\"} $HQP_UPDATE"
     echo '# HELP hqplayer_update_check_success 1 if version check succeeded'
     echo '# TYPE hqplayer_update_check_success gauge'
     echo "hqplayer_update_check_success $HQP_SUCCESS"
+    echo '# HELP hqplayer_distro_bump_available 1 if signalyst publishes hqplayerd bins for a newer Fedora than the running release'
+    echo '# TYPE hqplayer_distro_bump_available gauge'
+    echo "hqplayer_distro_bump_available{running=\"${RUNNING_FC}\",latest=\"${LATEST_FC}\"} $DISTRO_BUMP"
+    echo '# HELP hqplayer_distro_check_success 1 if the bins root listing was fetched'
+    echo '# TYPE hqplayer_distro_check_success gauge'
+    echo "hqplayer_distro_check_success $DISTRO_SUCCESS"
     echo '# HELP naa_update_available 1 if NAA update available on signalyst.com'
     echo '# TYPE naa_update_available gauge'
     echo "naa_update_available{known=\"${KNOWN_NAA}\",latest=\"${LATEST_NAA:-unknown}\"} $NAA_UPDATE"
